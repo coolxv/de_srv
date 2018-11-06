@@ -4,10 +4,10 @@
 #include <string>
 #include <zmq.hpp>
 #include <msgpack.hpp>
+#include <mysql.h>
 #include "message.h"
 
 using namespace std;
-
 
 template <typename T>
 static void send_data(zmq::socket_t& socket, const string& tag, const T& data)
@@ -39,8 +39,61 @@ static void recv_data(zmq::socket_t& socket, string& tag, T& data)
 	deserialized.convert(data);
 }
 
+void  init_db()
+{
+    MYSQL mysql;
+    mysql_init(&mysql);
+    if(!mysql_real_connect(&mysql, "localhost", "root", "Coolxv1818581", NULL, 3306, NULL, 0))
+    {
+        mysql_close(&mysql);
+        cout << mysql_error(&mysql) << endl;
+        return;
+    }
+
+    mysql_set_character_set(&mysql, "utf8");
+    char value = 1;
+    mysql_options(&mysql, MYSQL_OPT_RECONNECT, &value);
+
+    mysql_autocommit(&mysql, 1);
+    
+    string sql = "select * from user";
+    if(0 == mysql_select_db(&mysql, "test"))
+    {
+        mysql_real_query(&mysql, sql.c_str(), sql.size());
+    }
+    //mysql_error(&mysql);
+
+    MYSQL_RES *res;
+    MYSQL_ROW row;
+    MYSQL_FIELD *fields;
+
+    my_ulonglong num_rows;
+    unsigned int num_fields;
+    if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
+    {
+        res = mysql_store_result(&mysql);
+        if(nullptr != res)
+        {
+            num_rows = mysql_num_rows(res);
+            fields = mysql_fetch_field(res);
+            while((row = mysql_fetch_row(res)))
+            {
+                for(unsigned int i = 0; i < num_fields; i++)
+                {
+                    cout << fields[i].name << "=" << row[i] << endl;
+                }
+            }
+        }
+        mysql_free_result(res);
+
+    }
+    mysql_close(&mysql);
+}
+
 
 int main () {
+    init_db();
+
     //  Prepare our context and socket
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
