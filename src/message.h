@@ -10,8 +10,9 @@ struct login_req_pk
   std::string mn; //machine name
   std::string mc; //machine code
   std::string ip;
+  std::string ver;
   std::time_t time;
-  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, time);
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, ver, time);
 };
 struct login_rsp_pk
 {
@@ -30,8 +31,9 @@ struct logout_req_pk
   std::string mn; //machine name
   std::string mc; //machine code
   std::string ip;
+  std::string ver;
   std::time_t time;
-  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, time);
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, ver, time);
 };
 struct logout_rsp_pk
 {

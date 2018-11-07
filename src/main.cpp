@@ -25,7 +25,6 @@ static void send_data(zmq::socket_t& socket, const string& tag, const T& data)
 	socket.send(body_msg);
 }
 
-template <typename T>
 static void recv_tag(zmq::socket_t& socket, string& tag)
 {
 	zmq::message_t tag_msg;
@@ -111,7 +110,8 @@ static int check_pwd_for_login(MYSQL &mysql, const login_req_pk &login_req)
     my_ulonglong num_rows;
     unsigned int num_fields;
 
-    string sql = "select pwd, status from user where user=" + login_req.user;
+    string sql = "select pwd, status from user where user='" + login_req.user + "'";
+	cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
         res = mysql_store_result(&mysql);
@@ -121,13 +121,17 @@ static int check_pwd_for_login(MYSQL &mysql, const login_req_pk &login_req)
             row = mysql_fetch_row(res);
             if((num_rows == 1) 
                 && (0 == strcmp(row[0], login_req.pwd.c_str()))
-                && (row[1] == 1))
+                && (atoi(row[1]) == 1))
             {
                 return 1;
             }
             mysql_free_result(res);
         }
     }
+	else
+	{
+		cout << mysql_error(&mysql) << endl;
+	}
 
     return 0;
 
@@ -143,7 +147,8 @@ static int check_date_for_login(MYSQL &mysql, const login_req_pk &login_req)
     unsigned int num_fields;
 
     string db_date;
-    string sql = "select expire_date from uuid where user=" + login_req.user + " uuid=" + login_req.uuid;
+    string sql = "select expire_date from uuid where user='" + login_req.user + "' and uuid='" + login_req.uuid + "'";
+	cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
         res = mysql_store_result(&mysql);
@@ -165,21 +170,18 @@ static int check_date_for_login(MYSQL &mysql, const login_req_pk &login_req)
     }
     else
     {
+		cout << mysql_error(&mysql) << endl;
         return 0;
     }
     struct tm tm_time;
     strptime(db_date.c_str(), "%Y-%m-%d %H:%M:%S", &tm_time);
     time_t  expire_date =  mktime(&tm_time);
     time_t current_date = time(NULL);
-    if(expire_date > current_date)
+    if(current_date > expire_date)
     {
-        return 0
+        return 0;
     }
     
-    return 1;
-
-
-
     return 1;
 
 
@@ -195,7 +197,9 @@ static int check_count_for_login(MYSQL &mysql, const login_req_pk &login_req)
     unsigned int num_fields;
 
     int count = 0;
-    string sql = "select count from uuid where user=" + login_req.user + " uuid=" + login_req.uuid;
+	//get count
+    string sql = "select count from uuid where user='" + login_req.user + "' and uuid='" + login_req.uuid + "'";
+	cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
         res = mysql_store_result(&mysql);
@@ -205,7 +209,7 @@ static int check_count_for_login(MYSQL &mysql, const login_req_pk &login_req)
             row = mysql_fetch_row(res);
             if(num_rows == 1) 
             {
-                count = row[0];
+                count = atoi(row[0]);
             }
             else
             {
@@ -217,10 +221,151 @@ static int check_count_for_login(MYSQL &mysql, const login_req_pk &login_req)
     }
     else
     {
+		cout << mysql_error(&mysql) << endl;
+        return 0;
+    }
+	//compute count
+    int ccount = 0;
+    sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "'";
+	cout << sql << endl;
+    if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
+    {
+        res = mysql_store_result(&mysql);
+        if(nullptr != res)
+        {
+            num_rows = mysql_num_rows(res);
+            row = mysql_fetch_row(res);
+            if(num_rows == 1) 
+            {
+                ccount = atoi(row[0]);
+            }
+            else
+            {
+                mysql_free_result(res);
+                return 0;
+            }
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+		cout << mysql_error(&mysql) << endl;
         return 0;
     }
 
+	//if exist
+    int cccount = 0;
+    sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+	cout << sql << endl;
+    if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
+    {
+        res = mysql_store_result(&mysql);
+        if(nullptr != res)
+        {
+            num_rows = mysql_num_rows(res);
+            row = mysql_fetch_row(res);
+            if(num_rows == 1) 
+            {
+                cccount = atoi(row[0]);
+            }
+            else
+            {
+                mysql_free_result(res);
+                return 0;
+            }
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+		cout << mysql_error(&mysql) << endl;
+        return 0;
+    }
+
+	if(ccount < count)
+	{
+		return 1;
+	}
+	else if(count == ccount && 1 == cccount)
+	{
+		return 1;
+	}
+
     return 0;
+
+
+}
+static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
+{
+
+    MYSQL_RES *res;
+    MYSQL_ROW row;
+
+    my_ulonglong num_rows;
+    unsigned int num_fields;
+
+	//if exist
+    int count = 0;
+    string sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+	cout << sql << endl;
+    if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
+    {
+        res = mysql_store_result(&mysql);
+        if(nullptr != res)
+        {
+            num_rows = mysql_num_rows(res);
+            row = mysql_fetch_row(res);
+            if(num_rows == 1) 
+            {
+                count = atoi(row[0]);
+            }
+            else
+            {
+                mysql_free_result(res);
+                return 0;
+            }
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+		cout << mysql_error(&mysql) << endl;
+        return 0;
+    }
+	//insert into mc (user,uuid,mc,status,pub_ip,pri_ip,ver,login_date) values ('15011457740','db1ac97cf2bb5bab8481b0614346852f','zdfwdertaf',1,'2.2.2.2','192.168.1.1','1.0.0',now())
+	if(0 == count)
+	{
+		sql = "insert into mc (user,uuid,mc,status,mn,pub_ip,pri_ip,ver,login_date) values('" 
+			+ login_req.user
+			+ "','" + login_req.uuid
+			+ "','" + login_req.mc
+			+ "'," + "1"
+			+ ",'" + login_req.mn
+			+ "'," + "''"
+			+ ",'" + login_req.ip
+			+ "','" + login_req.ver
+			+ "'," + "now())";
+		cout << sql << endl;
+		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
+		{
+			cout << mysql_error(&mysql) << endl;
+			return 0;
+		}
+
+	}
+	//update mc set login_date=now() where user=15011457740 and uuid='db1ac97cf2bb5bab8481b0614346852f' and mc='zdfwdertaf'
+	else if(1 == count)
+	{
+		sql = "update mc set login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+		cout << sql << endl;
+		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
+		{
+			cout << mysql_error(&mysql) << endl;
+			return 0;
+		}
+
+	}
+    return 1;
 
 
 }
@@ -238,10 +383,31 @@ static void proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &
         send_data(socket, tag_rsp, login_rsp);
         return;
     }
+	
+    if(0 == check_date_for_login(mysql, login_req))
+    {
+        login_rsp_pk login_rsp;
+        login_rsp.err_code = 0;
+        login_rsp.err_msg = "date expire";
+        send_data(socket, tag_rsp, login_rsp);
+        return;
+    }
+    if(0 == check_count_for_login(mysql, login_req))
+    {
+        login_rsp_pk login_rsp;
+        login_rsp.err_code = 0;
+        login_rsp.err_msg = "count limit";
+        send_data(socket, tag_rsp, login_rsp);
+        return;
+    }
 
-
-
-
+	add_mc_for_login(mysql, login_req);
+	//
+	login_rsp_pk login_rsp;
+	login_rsp.err_code = 1;
+	login_rsp.err_msg = "login sucess";
+	send_data(socket, tag_rsp, login_rsp);
+	
 
 }
 static void proc_logout(MYSQL &mysql, zmq::socket_t& socket, const logout_req_pk &logout)
@@ -268,7 +434,7 @@ int main ()
         if(tag_req == "login")
         {
             login_req_pk login_req;
-            recv_data(socket, tag_req, login_req);
+            recv_data(socket, login_req);
             cout << tag_req << ":" << login_req.user << "-" << login_req.uuid << endl;
             proc_login(mysql, socket, login_req);
         }
