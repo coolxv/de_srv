@@ -6,29 +6,14 @@ struct login_req_pk
 {
   std::string user;
   std::string pwd;
+  std::string uuid; //uuid
   std::string mn; //machine name
   std::string mc; //machine code
   std::string ip;
   std::time_t time;
-  MSGPACK_DEFINE(user, pwd, mn, mc, ip, time);
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, time);
 };
 struct login_rsp_pk
-{
-  int err_code;
-  std::string err_msg;
-  MSGPACK_DEFINE(err_code, err_msg);
-};
-
-struct authorize_req_pk
-{
-  std::string user;
-  std::string pwd;
-  std::string mn; //machine name
-  std::string mc; //machine code
-  std::time_t time;
-  MSGPACK_DEFINE(user, pwd, mn, mc, time);
-};
-struct authorize_rsp_pk
 {
   int err_code;
   std::string err_msg;
@@ -41,11 +26,12 @@ struct logout_req_pk
 {
   std::string user;
   std::string pwd;
+  std::string uuid; //uuid
   std::string mn; //machine name
   std::string mc; //machine code
   std::string ip;
   std::time_t time;
-  MSGPACK_DEFINE(user, pwd, mn, mc, ip, time);
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, time);
 };
 struct logout_rsp_pk
 {
