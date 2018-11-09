@@ -46,6 +46,25 @@ static void recv_data(zmq::socket_t& socket, T& data)
 }
 
 
+static string  get_code_from_machine(string machine)
+{
+#define MACHINE_CODE_BUFFER_SIZE 21
+#define CODE_BUFFER_SIZE 11
+
+	if (machine.length() != (MACHINE_CODE_BUFFER_SIZE - 1))
+	{
+		return "";
+	}
+	char code[CODE_BUFFER_SIZE];
+	for (int i = 0, j = 0; i < (MACHINE_CODE_BUFFER_SIZE-1) && i < (int)machine.length() ; i++,j++)
+	{
+		code[j] = machine[++i];
+	}
+	code[CODE_BUFFER_SIZE - 1] = 0;
+	return code;
+
+}
+
 
 int  init_db( MYSQL &mysql)
 {
@@ -138,7 +157,7 @@ static int check_pwd_for_login(MYSQL &mysql, const login_req_pk &login_req)
 
 }
 
-static int check_date_for_login(MYSQL &mysql, const login_req_pk &login_req)
+static int check_date_for_login(MYSQL &mysql, const login_req_pk &login_req, string &date_limit)
 {
     MYSQL_RES *res;
     MYSQL_ROW row;
@@ -181,7 +200,7 @@ static int check_date_for_login(MYSQL &mysql, const login_req_pk &login_req)
     {
         return 0;
     }
-    
+    date_limit = db_date;
     return 1;
 
 
@@ -255,7 +274,7 @@ static int check_count_for_login(MYSQL &mysql, const login_req_pk &login_req)
 
 	//if exist
     int cccount = 0;
-    sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+    sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
 	cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
@@ -295,6 +314,7 @@ static int check_count_for_login(MYSQL &mysql, const login_req_pk &login_req)
 
 
 }
+
 static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
 {
 
@@ -306,7 +326,7 @@ static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
 
 	//if exist
     int count = 0;
-    string sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+    string sql = "select count(*) from mc where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
 	cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
@@ -338,7 +358,7 @@ static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
 		sql = "insert into mc (user,uuid,mc,status,mn,pub_ip,pri_ip,ver,login_date) values('" 
 			+ login_req.user
 			+ "','" + login_req.uuid
-			+ "','" + login_req.mc
+			+ "','" + get_code_from_machine(login_req.mc)
 			+ "'," + "1"
 			+ ",'" + login_req.mn
 			+ "'," + "''"
@@ -356,7 +376,7 @@ static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
 	//update mc set login_date=now() where user=15011457740 and uuid='db1ac97cf2bb5bab8481b0614346852f' and mc='zdfwdertaf'
 	else if(1 == count)
 	{
-		sql = "update mc set login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + login_req.mc + "'";
+		sql = "update mc set login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
 		cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
@@ -374,7 +394,8 @@ static int add_mc_for_login(MYSQL &mysql, const login_req_pk &login_req)
 static void proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &login_req)
 {
     const string tag_rsp = "login";
-
+	string date_limit;
+	
     if(0 == check_pwd_for_login(mysql, login_req))
     {
         login_rsp_pk login_rsp;
@@ -384,7 +405,7 @@ static void proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &
         return;
     }
 	
-    if(0 == check_date_for_login(mysql, login_req))
+    if(0 == check_date_for_login(mysql, login_req, date_limit))
     {
         login_rsp_pk login_rsp;
         login_rsp.err_code = 0;
@@ -406,6 +427,7 @@ static void proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &
 	login_rsp_pk login_rsp;
 	login_rsp.err_code = 1;
 	login_rsp.err_msg = "login sucess";
+	login_rsp.date = date_limit;
 	send_data(socket, tag_rsp, login_rsp);
 	
 
