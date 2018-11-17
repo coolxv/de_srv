@@ -154,7 +154,8 @@ static int check_uuid_for_login(MYSQL &mysql, const login_req_pk &login_req,stri
     string db_expire_date;
     string db_version;
 	int db_status;
-    string sql = "select status,version,expire_date from uuid where user='" + login_req.user + "' and uuid='" + login_req.uuid + "'";
+	string db_price;
+    string sql = "select status,version,expire_date,price from uuid where user='" + login_req.user + "' and uuid='" + login_req.uuid + "'";
 	//cout << sql << endl;
     if(0 == mysql_real_query(&mysql, sql.c_str(), sql.size()))
     {
@@ -168,6 +169,7 @@ static int check_uuid_for_login(MYSQL &mysql, const login_req_pk &login_req,stri
             	db_status = atoi(row[0]);
 	            db_version = row[1];
                 db_expire_date = row[2];
+				db_price = row[3];
             }
             else
             {
@@ -192,6 +194,13 @@ static int check_uuid_for_login(MYSQL &mysql, const login_req_pk &login_req,stri
 	int db_ver_i = atoi(db_version.c_str());
 	int pk_ver_i = atoi(login_req.ver.c_str());
     if(pk_ver_i < db_ver_i)
+    {
+        return 0;
+    }
+	//check price
+	int db_price_i = atoi(db_price.c_str());
+	int pk_price_i = atoi(login_req.price.c_str());
+    if(db_price_i > 0 && (pk_price_i < db_price_i || pk_price_i > 200))
     {
         return 0;
     }
@@ -360,14 +369,17 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 	//insert into mc (user,uuid,mc,status,pub_ip,pri_ip,ver,login_date) values ('15011457740','db1ac97cf2bb5bab8481b0614346852f','zdfwdertaf',1,'2.2.2.2','192.168.1.1','1.0.0',now())
 	if(0 == count)
 	{
-		sql = "insert into mc (user,uuid,mc,status,mn,pub_ip,pri_ip,ver,login_date,create_date) values('" 
+		sql = "insert into mc (user,uuid,mc,status,mn,pub_ip,pri_ip,mac,price,ver,login_date,create_date) values('" 
 			+ login_req.user
 			+ "','" + login_req.uuid
 			+ "','" + get_code_from_machine(login_req.mc)
 			+ "'," + "1"
+			+ "," + "1"
 			+ ",'" + login_req.mn
 			+ "'," + "''"
 			+ ",'" + login_req.ip
+			+ ",'" + login_req.mac
+			+ ",'" + login_req.price
 			+ "','" + login_req.ver
 			+ "'," + "now()"
 			+ "," + "now())";
@@ -382,7 +394,7 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 	//update mc set login_date=now() where user=15011457740 and uuid='db1ac97cf2bb5bab8481b0614346852f' and mc='zdfwdertaf'
 	else if(1 == count)
 	{
-		sql = "update mc set status=1, login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
+		sql = "update mc set status=1, action=2, pri_ip='" + login_req.ip + "', mac='"  + login_req.mac  + "', ver='"  + login_req.ver  + "', price='"  + login_req.price + "', login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
 		//cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
@@ -436,7 +448,7 @@ static int update_mc_for_logout(MYSQL &mysql, const logout_req_pk &logout_req)
 	if(1 == count)
 
 	{
-		sql = "update mc set status=0, logout_date=now() where user='" + logout_req.user + "' and uuid='" + logout_req.uuid + "' and mc='" + get_code_from_machine(logout_req.mc) + "'";
+		sql = "update mc set status=0, action=3, logout_date=now() where user='" + logout_req.user + "' and uuid='" + logout_req.uuid + "' and mc='" + get_code_from_machine(logout_req.mc) + "'";
 		//cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
@@ -510,11 +522,9 @@ static int proc_logout(MYSQL &mysql, zmq::socket_t& socket, const logout_req_pk 
 }
 
 
-void main_loop ()
+void main_loop (MYSQL &mysql)
 {
-    //init db
-    MYSQL mysql;
-    init_db(mysql);
+
     //init socket
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
@@ -522,7 +532,7 @@ void main_loop ()
 	socket.setsockopt(ZMQ_SNDTIMEO, &sendtimeout, sizeof(sendtimeout));
 	int lingertime = 0;
 	socket.setsockopt(ZMQ_LINGER, &lingertime, sizeof(lingertime));
-    socket.bind ("tcp://*:8787");
+    socket.bind ("tcp://*:8888");
     //loop process package
     while (true) {
 
@@ -550,15 +560,22 @@ void main_loop ()
 
 int main ()
 {
-	while(true)
+
+    //init db
+    MYSQL mysql;
+    int ret = init_db(mysql);
+	if(ret > 0)
 	{
-		try
+		while(true)
 		{
-			main_loop();
-		}
-		catch (exception& e)
-		{
-			cout << "exception:" << e.what() <<endl;
+			try
+			{
+				main_loop(mysql);
+			}
+			catch (exception& e)
+			{
+				cout << "exception:" << e.what() <<endl;
+			}
 		}
 	}
 	return 0;
