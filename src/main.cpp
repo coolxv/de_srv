@@ -374,16 +374,15 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 			+ "','" + login_req.uuid
 			+ "','" + get_code_from_machine(login_req.mc)
 			+ "'," + "1"
-			+ "," + "1"
 			+ ",'" + login_req.mn
 			+ "'," + "''"
 			+ ",'" + login_req.ip
-			+ ",'" + login_req.mac
-			+ ",'" + login_req.price
+			+ "','" + login_req.mac
+			+ "','" + login_req.price
 			+ "','" + login_req.ver
 			+ "'," + "now()"
 			+ "," + "now())";
-		//cout << sql << endl;
+		cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
 			cout << mysql_error(&mysql) << endl;
@@ -395,7 +394,7 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 	else if(1 == count)
 	{
 		sql = "update mc set status=1, action=2, pri_ip='" + login_req.ip + "', mac='"  + login_req.mac  + "', ver='"  + login_req.ver  + "', price='"  + login_req.price + "', login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
-		//cout << sql << endl;
+		cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
 			cout << mysql_error(&mysql) << endl;
