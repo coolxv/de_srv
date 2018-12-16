@@ -9,12 +9,13 @@ struct login_req_pk
   std::string uuid; //uuid
   std::string mn; //machine name
   std::string mc; //machine code
-  std::string ip;
+  std::string pri_ip;
+  std::string pub_ip;
   std::string mac;
   std::string ver;
-  std::time_t time;
   std::string price;
-  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, mac, ver, time, price);
+  std::time_t time;
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, pri_ip, pub_ip, mac, ver, price, time);
 };
 struct login_rsp_pk
 {
@@ -33,11 +34,8 @@ struct logout_req_pk
   std::string uuid; //uuid
   std::string mn; //machine name
   std::string mc; //machine code
-  std::string ip;
-  std::string mac;
-  std::string ver;
   std::time_t time;
-  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, ip, mac, ver, time);
+  MSGPACK_DEFINE(user, pwd, uuid, mn, mc, time);
 };
 struct logout_rsp_pk
 {
