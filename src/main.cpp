@@ -375,15 +375,14 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 			+ "','" + get_code_from_machine(login_req.mc)
 			+ "'," + "1"
 			+ ",'" + login_req.mn
-			+ "'," + "''"
-			+ ",'" + login_req.pri_ip
 			+ "','" + login_req.pub_ip
+			+ "','" + login_req.pri_ip
 			+ "','" + login_req.mac
 			+ "','" + login_req.price
 			+ "','" + login_req.ver
 			+ "'," + "now()"
 			+ "," + "now())";
-		//cout << sql << endl;
+		cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
 			cout << mysql_error(&mysql) << endl;
@@ -395,7 +394,7 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 	else if(1 == count)
 	{
 		sql = "update mc set status=1, action=2, pri_ip='" + login_req.pri_ip + "', pub_ip='"  + login_req.pub_ip  + "', mac='"  + login_req.mac  + "', ver='"  + login_req.ver  + "', price='"  + login_req.price + "', login_date=now() where user='" + login_req.user + "' and uuid='" + login_req.uuid + "' and mc='" + get_code_from_machine(login_req.mc) + "'";
-		//cout << sql << endl;
+		cout << sql << endl;
 		if(0 != mysql_real_query(&mysql, sql.c_str(), sql.size()))
 		{
 			cout << mysql_error(&mysql) << endl;
@@ -403,6 +402,10 @@ static int add_or_update_mc_for_login(MYSQL &mysql, const login_req_pk &login_re
 		}
 
 	}
+    else
+    {
+        cout << "error count:" << count << endl;
+    }
     return 1;
 
 
@@ -473,7 +476,7 @@ static int proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &l
         login_rsp.err_code = 0;
         login_rsp.err_msg = "user error";
         send_data(socket, tag_rsp, login_rsp);
-		cout << "login user error" << ":" << login_req.user << "-" << login_req.uuid << "-" << login_req.mc << "-" << login_req.mn << "-" << login_req.pri_ip << "-" << login_req.ver << endl;
+		cout << "login user error" << ":" << login_req.user << "|" << login_req.uuid << "|" << login_req.mc << "|" << login_req.mn << "|" << login_req.pri_ip << "|" << login_req.ver << endl;
         return 0;
     }
 	
@@ -483,7 +486,7 @@ static int proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &l
         login_rsp.err_code = 0;
         login_rsp.err_msg = "uuid error";
         send_data(socket, tag_rsp, login_rsp);
-		cout << "login uuid error" << ":" << login_req.user << "-" << login_req.uuid << "-" << login_req.mc << "-" << login_req.mn << "-" << login_req.pri_ip << "-" << login_req.ver <<  endl;
+		cout << "login uuid error" << ":" << login_req.user << "|" << login_req.uuid << "|" << login_req.mc << "|" << login_req.mn << "|" << login_req.pri_ip << "|" << login_req.ver <<  endl;
         return 0;
     }
     if(0 == check_count_for_login(mysql, login_req))
@@ -492,7 +495,7 @@ static int proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &l
         login_rsp.err_code = 0;
         login_rsp.err_msg = "count limit";
         send_data(socket, tag_rsp, login_rsp);
-		cout << "login count limit" << ":" << login_req.user << "-" << login_req.uuid << "-" << login_req.mc << "-" << login_req.mn << "-" << login_req.pri_ip << "-" << login_req.ver <<  endl;
+		cout << "login count limit" << ":" << login_req.user << "|" << login_req.uuid << "|" << login_req.mc << "|" << login_req.mn << "|" << login_req.pri_ip << "|" << login_req.ver <<  endl;
         return 0;
     }
 
@@ -504,7 +507,7 @@ static int proc_login(MYSQL &mysql, zmq::socket_t& socket, const login_req_pk &l
 	login_rsp.date = expire_date;
 	send_data(socket, tag_rsp, login_rsp);
 
-	cout << "login sucess" << ":" << login_req.user << "-" << login_req.uuid << "-" << login_req.mc << "-" << login_req.mn <<  endl;
+	cout << "login sucess" << ":" << login_req.user << "|" << login_req.uuid << "|" << login_req.mc << "|" << login_req.mn <<  endl;
 	return 1;
 }
 static int proc_logout(MYSQL &mysql, zmq::socket_t& socket, const logout_req_pk &logout_req)
@@ -517,7 +520,7 @@ static int proc_logout(MYSQL &mysql, zmq::socket_t& socket, const logout_req_pk 
 	logout_rsp.err_code = 1;
 	logout_rsp.err_msg = "logout sucess";
 	send_data(socket, tag_rsp, logout_rsp);
-	cout << "logout sucess" << ":" << logout_req.user << "-" << logout_req.uuid << "-" << logout_req.mc << "-" << logout_req.mn  <<  endl;
+	cout << "logout sucess" << ":" << logout_req.user << "|" << logout_req.uuid << "|" << logout_req.mc << "|" << logout_req.mn  <<  endl;
 	return 1;
 }
 
@@ -532,7 +535,7 @@ void main_loop (MYSQL &mysql)
 	socket.setsockopt(ZMQ_SNDTIMEO, &sendtimeout, sizeof(sendtimeout));
 	int lingertime = 0;
 	socket.setsockopt(ZMQ_LINGER, &lingertime, sizeof(lingertime));
-    socket.bind ("tcp://*:8888");
+    socket.bind ("tcp://*:8889");
     //loop process package
     while (true) {
 
