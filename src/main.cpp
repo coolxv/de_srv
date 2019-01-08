@@ -6,10 +6,13 @@
 #include <zmq.hpp>
 #include <msgpack.hpp>
 #include <mysql.h>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+
 #include "message.h"
 
 using namespace std;
-
+using namespace google;
 
 
 template <typename T>
@@ -561,8 +564,15 @@ void main_loop (MYSQL &mysql)
     }
 }
 
-int main ()
+int main (int argc, char *argv[])
 {
+
+    //日志和命令行参数初始化
+    FLAGS_log_dir = ".";
+    FLAGS_logtostderr = true;
+    ParseCommandLineFlags(&argc, &argv, true);
+    InitGoogleLogging(argv[0]);
+
 
     //init db
     MYSQL mysql;
@@ -581,7 +591,10 @@ int main ()
 			}
 		}
 	}
-	return 0;
+
+    ShutdownGoogleLogging();
+    ShutDownCommandLineFlags();
+    return 0;
 }
 
 
